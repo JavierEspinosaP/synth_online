@@ -1,0 +1,74 @@
+// Synthesizer.scss
+
+.synthesizer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #333;
+  border-radius: 5px;
+  width: 1400px;
+  height: 400px;
+  padding: 20px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+}
+
+.synthesizer__title {
+  font-size: 24px;
+  color: #ffffff;
+  margin-bottom: 10px;
+}
+
+.synthesizer__control-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.synthesizer__control-label {
+  font-size: 12px;
+  color: #ffffff;
+}
+
+.synthesizer__control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.synthesizer__control input[type="number"],
+.synthesizer__control select {
+  margin-top: 5px;
+  width: 60px;
+  border: none;
+  border-radius: 3px;
+  background-color: #555;
+  color: #ffffff;
+  text-align: center;
+  outline: none;
+}
+
+.synthesizer__notes {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.synthesizer__button {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: #3e8e41;
+  }
+}
