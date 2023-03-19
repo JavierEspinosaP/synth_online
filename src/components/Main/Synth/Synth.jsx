@@ -1,6 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as Tone from 'tone';
 import '../../../styles/components/__synth.scss'
+import scalesData from '../../../assets/scales.json';
+
+
+const generateScaleNotes = (rootNote, scaleType) => {
+  const scalePattern = scalesData.scales[scaleType];
+  const rootNoteIndex = scalesData.notes.indexOf(rootNote);
+  let scaleNotes = [];
+  let octaveOffset = 0;
+
+  while (scaleNotes.length < 8) {
+    for (const interval of scalePattern) {
+      const noteIndex = rootNoteIndex + interval + octaveOffset;
+      if (noteIndex < scalesData.notes.length) {
+        scaleNotes.push(scalesData.notes[noteIndex]);
+      } else {
+        octaveOffset += 12; // Ajusta el offset para pasar a la siguiente octava.
+        continue; // Salta esta iteración y continúa con el siguiente intervalo.
+      }
+
+      if (scaleNotes.length === 8) {
+        break;
+      }
+    }
+  }
+
+  return scaleNotes;
+};
+
+
+
 
 const Synthesizer = () => {
   const [oscillatorType, setOscillatorType] = useState('sine');
@@ -9,13 +39,17 @@ const Synthesizer = () => {
   const [delayTime, setDelayTime] = useState(0);
   const [delayFeedback, setDelayFeedback] = useState(0);
   const [reverbLevel, setReverbLevel] = useState(0);
-  const [arpeggiatorNotes, setArpeggiatorNotes] = useState(['C5', 'D5', 'E5', 'F5', 'G5', 'A5', 'B5', 'C6']);
   const [isPlaying, setIsPlaying] = useState(false);
   const loop = useRef(null);
   const [bpm, setBpm] = useState(200);
   const [part, setPart] = useState(null);
   const [reverbDecay, setReverbDecay] = useState(1.5);
   const events = useRef([]);
+  const [rootNote, setRootNote] = useState('C5');
+  const [scale, setScale] = useState('major');
+  // Utiliza la función generateArpeggiatorNotes para generar las notas iniciales del arpegiador
+  const [arpeggiatorNotes, setArpeggiatorNotes] = useState(generateScaleNotes(rootNote, scale));
+
 
 
   const synth = useRef(null);
@@ -33,7 +67,7 @@ const Synthesizer = () => {
     gain.current = new Tone.Gain(gainValue).toDestination();
     delay.current = new Tone.FeedbackDelay(delayTime, delayFeedback).connect(gain.current);
     reverb.current = new Tone.Reverb(reverbDecay).connect(gain.current);
-    
+
     await reverb.current.generate();
     if (reverb.current.roomSize) {
       reverb.current.roomSize.value = reverbLevel;
@@ -47,6 +81,17 @@ const Synthesizer = () => {
   useEffect(() => {
     createSynth();
   }, []);
+
+  // Actualiza las notas del arpegiador cuando se monta el componente
+  useEffect(() => {
+    setArpeggiatorNotes(generateScaleNotes(rootNote, scale));
+  }, []);
+
+  // Actualiza las notas del arpegiador cuando cambian la nota básica o la escala
+  useEffect(() => {
+    setArpeggiatorNotes(generateScaleNotes(rootNote, scale));
+  }, [rootNote, scale]);
+
 
   const stopArpeggiator = () => {
     if (part) {
@@ -90,15 +135,16 @@ const Synthesizer = () => {
   useEffect(() => {
     arpeggiatorNotesRef.current = arpeggiatorNotes;
   }, [arpeggiatorNotes]);
-  
+
+
 
   const playArpeggiator = async () => {
     stopArpeggiator(); // Detener cualquier bucle existente antes de crear uno nuevo
-  
+
     await Tone.start();
-  
+
     updateArpeggioEvents(); // Añade esta línea
-  
+
     const events = arpeggiatorNotesRef.current.map((_, idx) => {
       const timeBetweenNotes = 60 / bpmRef.current;
       return {
@@ -106,25 +152,25 @@ const Synthesizer = () => {
         note: () => arpeggiatorNotesRef.current[idx], // Utiliza arpeggiatorNotesRef.current
       };
     });
-  
+
     // Aquí actualizamos el tiempo del loop
     const loopDuration = events.length * (60 / bpmRef.current);
-  
+
     const arpeggioPart = new Tone.Part((time, event) => {
       synth.current.triggerAttackRelease(event.note(), Tone.Time("1n"), time); // Usa event.note() en lugar de event.note
     }, events);
-  
-  
+
+
     arpeggioPart.loop = true;
     arpeggioPart.loopEnd = loopDuration; // Usamos el loopDuration actualizado
     arpeggioPart.start(0);
-  
+
     Tone.Transport.start();
     setIsPlaying(true);
     setPart(arpeggioPart);
   };
-  
-  
+
+
 
 
 
@@ -134,7 +180,7 @@ const Synthesizer = () => {
     newNotes[index] = event.target.value;
     setArpeggiatorNotes(newNotes);
   };
-  
+
 
   useEffect(() => {
     if (synth.current && gain.current && delay.current && reverb.current) {
@@ -161,7 +207,7 @@ const Synthesizer = () => {
       reverb.current.decay = reverbDecay;
     }
   }, [reverbLevel, reverbDecay]);
-  
+
 
   return (
     <div className="synthesizer">
@@ -271,6 +317,38 @@ const Synthesizer = () => {
           />
         </div>
       </div>
+
+      <select
+        id="root-note"
+        value={rootNote}
+        onChange={(e) => {
+          setRootNote(e.target.value);
+          setArpeggiatorNotes(generateScaleNotes(e.target.value, scale));
+        }}
+      >
+        {scalesData.notes.map((note, index) => (
+          <option key={index} value={note}>
+            {note}
+          </option>
+        ))}
+      </select>
+
+      <select
+        id="scale"
+        value={scale}
+        onChange={(e) => {
+          setScale(e.target.value);
+          setArpeggiatorNotes(generateScaleNotes(rootNote, e.target.value));
+        }}
+      >
+        {Object.keys(scalesData.scales).map((scaleName, index) => (
+          <option key={index} value={scaleName}>
+            {scaleName.charAt(0).toUpperCase() + scaleName.slice(1)}
+          </option>
+        ))}
+      </select>
+
+
 
       <div className="synthesizer__arpeggiator">
         <h3 className="synthesizer__arpeggiator-title">Arpeggiator</h3>
