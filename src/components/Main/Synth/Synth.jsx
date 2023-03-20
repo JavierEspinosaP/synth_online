@@ -5,6 +5,7 @@ import scalesData from '../../../assets/scales.json';
 
 
 const generateScaleNotes = (rootNote, scaleType) => {
+
   const scalePattern = scalesData.scales[scaleType];
   const rootNoteIndex = scalesData.notes.indexOf(rootNote);
   let scaleNotes = [];
@@ -16,8 +17,7 @@ const generateScaleNotes = (rootNote, scaleType) => {
       if (noteIndex < scalesData.notes.length) {
         scaleNotes.push(scalesData.notes[noteIndex]);
       } else {
-        octaveOffset += 12; // Ajusta el offset para pasar a la siguiente octava.
-        continue; // Salta esta iteración y continúa con el siguiente intervalo.
+        octaveOffset += 12;
       }
 
       if (scaleNotes.length === 8) {
@@ -26,13 +26,26 @@ const generateScaleNotes = (rootNote, scaleType) => {
     }
   }
 
-  return scaleNotes;
+  return { scaleNotes, nextOctave: octaveOffset };
+};
+
+const generateStepRangeOptions = (numSteps) => {
+  const ranges = [];
+  const stepsPerRange = 8;
+
+  for (let i = 0; i < numSteps; i += stepsPerRange) {
+    ranges.push({
+      start: i,
+      end: i + stepsPerRange - 1,
+    });
+  }
+
+  return ranges;
 };
 
 
-
-
 const Synthesizer = () => {
+
   const [oscillatorType, setOscillatorType] = useState('sine');
   const [envelope, setEnvelope] = useState({ attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 });
   const [gainValue, setGainValue] = useState(0.5);
@@ -47,10 +60,14 @@ const Synthesizer = () => {
   const events = useRef([]);
   const [rootNote, setRootNote] = useState('C5');
   const [scale, setScale] = useState('major');
-  // Utiliza la función generateArpeggiatorNotes para generar las notas iniciales del arpegiador
-  const [arpeggiatorNotes, setArpeggiatorNotes] = useState(generateScaleNotes(rootNote, scale));
+  const [numSteps, setNumSteps] = useState(8);
+  const [arpeggiatorNotes, setArpeggiatorNotes] = useState(generateScaleNotes(rootNote, scale, numSteps));
+  const [currentPage, setCurrentPage] = useState(0);
 
 
+  useEffect(() => {
+    console.log(arpeggiatorNotes);
+  }, [])
 
   const synth = useRef(null);
   const gain = useRef(null);
@@ -82,14 +99,17 @@ const Synthesizer = () => {
     createSynth();
   }, []);
 
-  // Actualiza las notas del arpegiador cuando se monta el componente
+
+
+
   useEffect(() => {
-    setArpeggiatorNotes(generateScaleNotes(rootNote, scale));
+    const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale);
+    setArpeggiatorNotes({ scaleNotes, nextOctave });
   }, []);
 
-  // Actualiza las notas del arpegiador cuando cambian la nota básica o la escala
   useEffect(() => {
-    setArpeggiatorNotes(generateScaleNotes(rootNote, scale));
+    const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale);
+    setArpeggiatorNotes({ scaleNotes, nextOctave });
   }, [rootNote, scale]);
 
 
@@ -113,7 +133,8 @@ const Synthesizer = () => {
   };
 
   const updateArpeggioEvents = () => {
-    const newEvents = arpeggiatorNotesRef.current.map((note, idx) => {
+    console.log(arpeggiatorNotesRef.current);
+    const newEvents = arpeggiatorNotesRef.current.slice(0, numSteps).map((note, idx) => {
       const timeBetweenNotes = 60 / bpmRef.current;
       return {
         time: idx * timeBetweenNotes,
@@ -133,10 +154,8 @@ const Synthesizer = () => {
   }, [bpm]);
 
   useEffect(() => {
-    arpeggiatorNotesRef.current = arpeggiatorNotes;
+    arpeggiatorNotesRef.current = arpeggiatorNotes.scaleNotes;
   }, [arpeggiatorNotes]);
-
-
 
   const playArpeggiator = async () => {
     stopArpeggiator(); // Detener cualquier bucle existente antes de crear uno nuevo
@@ -171,14 +190,10 @@ const Synthesizer = () => {
   };
 
 
-
-
-
-
   const handleNoteChange = (index, event) => {
-    const newNotes = [...arpeggiatorNotes];
+    const newNotes = [...arpeggiatorNotes.scaleNotes];
     newNotes[index] = event.target.value;
-    setArpeggiatorNotes(newNotes);
+    setArpeggiatorNotes({ scaleNotes: newNotes, nextOctave: arpeggiatorNotes.nextOctave });
   };
 
 
@@ -207,6 +222,10 @@ const Synthesizer = () => {
       reverb.current.decay = reverbDecay;
     }
   }, [reverbLevel, reverbDecay]);
+
+  const handlePageChange = (event) => {
+    setCurrentPage(parseInt(event.target.value, 10));
+  };
 
 
   return (
@@ -293,25 +312,25 @@ const Synthesizer = () => {
 
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="delayTime">Delay Time</label>
-          <input type="range" id="delayTime" min="0" max="1" step="0.01" value={delayTime} onChange={(e) => setDelayTime(parseFloat(e.target.value))} />
+          <input type="range" id="delayTime" min="0" max="1" step="0.2" value={delayTime} onChange={(e) => setDelayTime(parseFloat(e.target.value))} />
         </div>
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="delayFeedback">Delay Feedback</label>
-          <input type="range" id="delayFeedback" min="0" max="1" step="0.01" value={delayFeedback} onChange={(e) => setDelayFeedback(parseFloat(e.target.value))} />
+          <input type="range" id="delayFeedback" min="0" max="1" step="0.2" value={delayFeedback} onChange={(e) => setDelayFeedback(parseFloat(e.target.value))} />
         </div>
 
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="reverbLevel">Reverb Level</label>
-          <input type="range" id="reverbLevel" min="0" max="1" step="0.01" value={reverbLevel} onChange={(e) => setReverbLevel(parseFloat(e.target.value))} />
+          <input type="range" id="reverbLevel" min="0" max="1" step="0.2" value={reverbLevel} onChange={(e) => setReverbLevel(parseFloat(e.target.value))} />
         </div>
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="reverbDecay">Reverb Decay</label>
           <input
             type="range"
             id="reverbDecay"
-            min="0"
+            min="0.01"
             max="10"
-            step="0.1"
+            step="2"
             value={reverbDecay}
             onChange={(e) => setReverbDecay(parseFloat(e.target.value))}
           />
@@ -326,7 +345,7 @@ const Synthesizer = () => {
           setArpeggiatorNotes(generateScaleNotes(e.target.value, scale));
         }}
       >
-        {scalesData.notes.map((note, index) => (
+        {scalesData.notes.slice(0, 12).map((note, index) => (
           <option key={index} value={note}>
             {note}
           </option>
@@ -348,12 +367,33 @@ const Synthesizer = () => {
         ))}
       </select>
 
+      <select
+        id="num-steps"
+        value={numSteps}
+        onChange={(e) => {
+          setNumSteps(parseInt(e.target.value, 10));
+          setArpeggiatorNotes(generateScaleNotes(rootNote, scale, parseInt(e.target.value, 10)));
+        }}
+      >
+        <option value="8">8</option>
+        <option value="16">16</option>
+        <option value="32">32</option>
+        <option value="64">64</option>
+      </select>
+
+      <select id="current-page" value={currentPage} onChange={handlePageChange}>
+        {generateStepRangeOptions(numSteps).map((range, index) => (
+          <option key={index} value={index}>
+            {range.start + 1}-{range.end + 1}
+          </option>
+        ))}
+      </select>
 
 
       <div className="synthesizer__arpeggiator">
         <h3 className="synthesizer__arpeggiator-title">Arpeggiator</h3>
         <div className="synthesizer__arpeggiator-notes">
-          {arpeggiatorNotes.map((note, idx) => (
+          {arpeggiatorNotes.scaleNotes.slice(0, numSteps).map((note, idx) => (
             <div key={idx} className="synthesizer__arpeggiator-note">
               <label className="synthesizer__arpeggiator-note-label" htmlFor={`note-${idx}`}>Note {idx + 1}</label>
               <select id={`note-${idx}`} value={note} onChange={(e) => handleNoteChange(idx, e)}>
@@ -365,6 +405,12 @@ const Synthesizer = () => {
                 <option value="A5">A5</option>
                 <option value="B5">B5</option>
                 <option value="C6">C6</option>
+                <option value="D6">D6</option>
+                <option value="E6">E6</option>
+                <option value="F6">F6</option>
+                <option value="G6">G6</option>
+                <option value="A6">A6</option>
+                <option value="B6">B6</option>
               </select>
             </div>
           ))}
