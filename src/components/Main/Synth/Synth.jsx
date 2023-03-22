@@ -4,14 +4,13 @@ import '../../../styles/components/__synth.scss'
 import scalesData from '../../../assets/scales.json';
 
 
-const generateScaleNotes = (rootNote, scaleType) => {
-
+const generateScaleNotes = (rootNote, scaleType, numSteps) => {
   const scalePattern = scalesData.scales[scaleType];
   const rootNoteIndex = scalesData.notes.indexOf(rootNote);
   let scaleNotes = [];
   let octaveOffset = 0;
 
-  while (scaleNotes.length < 8) {
+  while (scaleNotes.length < numSteps) {
     for (const interval of scalePattern) {
       const noteIndex = rootNoteIndex + interval + octaveOffset;
       if (noteIndex < scalesData.notes.length) {
@@ -20,27 +19,13 @@ const generateScaleNotes = (rootNote, scaleType) => {
         octaveOffset += 12;
       }
 
-      if (scaleNotes.length === 8) {
+      if (scaleNotes.length === numSteps) {
         break;
       }
     }
   }
 
   return { scaleNotes, nextOctave: octaveOffset };
-};
-
-const generateStepRangeOptions = (numSteps) => {
-  const ranges = [];
-  const stepsPerRange = 8;
-
-  for (let i = 0; i < numSteps; i += stepsPerRange) {
-    ranges.push({
-      start: i,
-      end: i + stepsPerRange - 1,
-    });
-  }
-
-  return ranges;
 };
 
 
@@ -53,7 +38,6 @@ const Synthesizer = () => {
   const [delayFeedback, setDelayFeedback] = useState(0);
   const [reverbLevel, setReverbLevel] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const loop = useRef(null);
   const [bpm, setBpm] = useState(200);
   const [part, setPart] = useState(null);
   const [reverbDecay, setReverbDecay] = useState(1.5);
@@ -63,12 +47,10 @@ const Synthesizer = () => {
   const [numSteps, setNumSteps] = useState(8);
   const [arpeggiatorNotes, setArpeggiatorNotes] = useState(generateScaleNotes(rootNote, scale, numSteps));
   const [currentPage, setCurrentPage] = useState(0);
+  const [stepRange, setStepRange] = useState({ start: 0, end: 7 });
+  const [currentPageNotes, setCurrentPageNotes] = useState([]);
 
-
-  useEffect(() => {
-    console.log(arpeggiatorNotes);
-  }, [])
-
+  
   const synth = useRef(null);
   const gain = useRef(null);
   const delay = useRef(null);
@@ -89,8 +71,6 @@ const Synthesizer = () => {
     if (reverb.current.roomSize) {
       reverb.current.roomSize.value = reverbLevel;
     }
-
-
     synth.current.connect(delay.current);
     synth.current.connect(reverb.current);
   };
@@ -99,19 +79,20 @@ const Synthesizer = () => {
     createSynth();
   }, []);
 
-
-
-
   useEffect(() => {
     const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale);
     setArpeggiatorNotes({ scaleNotes, nextOctave });
   }, []);
 
   useEffect(() => {
-    const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale);
+    const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale, numSteps);
     setArpeggiatorNotes({ scaleNotes, nextOctave });
-  }, [rootNote, scale]);
 
+    // Aquí se actualiza currentPageNotes
+    const pageStart = currentPage * 8;
+    const pageEnd = pageStart + 8;
+    setCurrentPageNotes(scaleNotes.slice(pageStart, pageEnd));
+  }, [rootNote, scale, numSteps, currentPage]);
 
   const stopArpeggiator = () => {
     if (part) {
@@ -162,6 +143,16 @@ const Synthesizer = () => {
 
     await Tone.start();
 
+    const scaleNotes = arpeggiatorNotes.scaleNotes;
+    let arpeggiatorNotesList = [];
+    const repeats = numSteps / scaleNotes.length;
+
+    for (let i = 0; i < repeats; i++) {
+      arpeggiatorNotesList = arpeggiatorNotesList.concat(scaleNotes);
+    }
+
+    arpeggiatorNotesRef.current = arpeggiatorNotesList;
+
     updateArpeggioEvents(); // Añade esta línea
 
     const events = arpeggiatorNotesRef.current.map((_, idx) => {
@@ -176,9 +167,9 @@ const Synthesizer = () => {
     const loopDuration = events.length * (60 / bpmRef.current);
 
     const arpeggioPart = new Tone.Part((time, event) => {
-      synth.current.triggerAttackRelease(event.note(), Tone.Time("1n"), time); // Usa event.note() en lugar de event.note
+      console.log(`Arpeggiator step: ${event.time / (60 / bpmRef.current)}`);
+      synth.current.triggerAttackRelease(event.note(), Tone.Time("1n"), time);
     }, events);
-
 
     arpeggioPart.loop = true;
     arpeggioPart.loopEnd = loopDuration; // Usamos el loopDuration actualizado
@@ -190,10 +181,16 @@ const Synthesizer = () => {
   };
 
 
+
   const handleNoteChange = (index, event) => {
     const newNotes = [...arpeggiatorNotes.scaleNotes];
     newNotes[index] = event.target.value;
     setArpeggiatorNotes({ scaleNotes: newNotes, nextOctave: arpeggiatorNotes.nextOctave });
+
+    // Agregue estas líneas para actualizar el estado de currentPageNotes
+    const pageStart = currentPage * 8;
+    const pageEnd = pageStart + 8;
+    setCurrentPageNotes(newNotes.slice(pageStart, pageEnd));
   };
 
 
@@ -371,8 +368,9 @@ const Synthesizer = () => {
         id="num-steps"
         value={numSteps}
         onChange={(e) => {
-          setNumSteps(parseInt(e.target.value, 10));
-          setArpeggiatorNotes(generateScaleNotes(rootNote, scale, parseInt(e.target.value, 10)));
+          const newNumSteps = parseInt(e.target.value, 10);
+          setNumSteps(newNumSteps);
+          setArpeggiatorNotes(generateScaleNotes(rootNote, scale, newNumSteps));
         }}
       >
         <option value="8">8</option>
@@ -381,10 +379,11 @@ const Synthesizer = () => {
         <option value="64">64</option>
       </select>
 
+      <label htmlFor="current-page">Page</label>
       <select id="current-page" value={currentPage} onChange={handlePageChange}>
-        {generateStepRangeOptions(numSteps).map((range, index) => (
+        {Array.from({ length: Math.ceil(numSteps / 8) }, (_, index) => (
           <option key={index} value={index}>
-            {range.start + 1}-{range.end + 1}
+            {(index + 1)}
           </option>
         ))}
       </select>
@@ -393,27 +392,21 @@ const Synthesizer = () => {
       <div className="synthesizer__arpeggiator">
         <h3 className="synthesizer__arpeggiator-title">Arpeggiator</h3>
         <div className="synthesizer__arpeggiator-notes">
-          {arpeggiatorNotes.scaleNotes.slice(0, numSteps).map((note, idx) => (
-            <div key={idx} className="synthesizer__arpeggiator-note">
-              <label className="synthesizer__arpeggiator-note-label" htmlFor={`note-${idx}`}>Note {idx + 1}</label>
-              <select id={`note-${idx}`} value={note} onChange={(e) => handleNoteChange(idx, e)}>
-                <option value="C5">C5</option>
-                <option value="D5">D5</option>
-                <option value="E5">E5</option>
-                <option value="F5">F5</option>
-                <option value="G5">G5</option>
-                <option value="A5">A5</option>
-                <option value="B5">B5</option>
-                <option value="C6">C6</option>
-                <option value="D6">D6</option>
-                <option value="E6">E6</option>
-                <option value="F6">F6</option>
-                <option value="G6">G6</option>
-                <option value="A6">A6</option>
-                <option value="B6">B6</option>
+          {currentPageNotes.map((note, index) => (
+            <div key={index} className="synthesizer__note-selector">
+              <select
+                value={note}
+                onChange={(e) => handleNoteChange(index + stepRange.start, e)}
+              >
+                {scalesData.notes.map((noteOption, idx) => (
+                  <option key={idx} value={noteOption}>
+                    {noteOption}
+                  </option>
+                ))}
               </select>
             </div>
           ))}
+
         </div>
       </div>
 
