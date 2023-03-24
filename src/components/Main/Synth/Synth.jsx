@@ -5,6 +5,7 @@ import scalesData from '../../../assets/scales.json';
 
 
 const generateScaleNotes = (rootNote, scaleType, numSteps) => {
+  
   const scalePattern = scalesData.scales[scaleType];
   const rootNoteIndex = scalesData.notes.indexOf(rootNote);
   let scaleNotes = [];
@@ -18,15 +19,16 @@ const generateScaleNotes = (rootNote, scaleType, numSteps) => {
       } else {
         octaveOffset += 12;
       }
-
       if (scaleNotes.length === numSteps) {
         break;
       }
     }
   }
-
   return { scaleNotes, nextOctave: octaveOffset };
 };
+
+
+
 
 
 const Synthesizer = () => {
@@ -45,7 +47,10 @@ const Synthesizer = () => {
   const [rootNote, setRootNote] = useState('C5');
   const [scale, setScale] = useState('major');
   const [numSteps, setNumSteps] = useState(8);
-  const [arpeggiatorNotes, setArpeggiatorNotes] = useState(generateScaleNotes(rootNote, scale, numSteps));
+  const [arpeggiatorNotes, setArpeggiatorNotes] = useState(() => {
+    const { scaleNotes, nextOctave } = generateScaleNotes('C5', 'major', 8);
+    return { scaleNotes, nextOctave };
+  });  
   const [currentPage, setCurrentPage] = useState(0);
   const [stepRange, setStepRange] = useState({ start: 0, end: 7 });
   const [currentPageNotes, setCurrentPageNotes] = useState([]);
@@ -61,7 +66,6 @@ const Synthesizer = () => {
       oscillator: { type: oscillatorType },
       envelope: { attack: envelope.attack, decay: envelope.decay, sustain: envelope.sustain, release: envelope.release },
     });
-
 
     gain.current = new Tone.Gain(gainValue).toDestination();
     delay.current = new Tone.FeedbackDelay(delayTime, delayFeedback).connect(gain.current);
@@ -79,20 +83,12 @@ const Synthesizer = () => {
     createSynth();
   }, []);
 
-  useEffect(() => {
-    const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale);
-    setArpeggiatorNotes({ scaleNotes, nextOctave });
-  }, []);
 
   useEffect(() => {
     const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale, numSteps);
     setArpeggiatorNotes({ scaleNotes, nextOctave });
-
-    // Aquí se actualiza currentPageNotes
-    const pageStart = currentPage * 8;
-    const pageEnd = pageStart + 8;
-    setCurrentPageNotes(scaleNotes.slice(pageStart, pageEnd));
-  }, [rootNote, scale, numSteps, currentPage]);
+  }, [rootNote, scale, numSteps]);
+  
 
   const stopArpeggiator = () => {
     if (part) {
@@ -114,16 +110,25 @@ const Synthesizer = () => {
   };
 
   const updateArpeggioEvents = () => {
+    // Mostrar en consola el contenido actual de arpeggiatorNotesRef
     console.log(arpeggiatorNotesRef.current);
+  
+    // Crear un nuevo array de eventos para el arpegio, basado en las notas actuales de arpeggiatorNotesRef
     const newEvents = arpeggiatorNotesRef.current.slice(0, numSteps).map((note, idx) => {
+      // Calcular el tiempo entre notas en función del BPM actual
       const timeBetweenNotes = 60 / bpmRef.current;
+  
+      // Devolver un objeto con el tiempo y la nota
       return {
         time: idx * timeBetweenNotes,
         note: note,
       };
     });
+  
+    // Asignar el nuevo array de eventos a la referencia events
     events.current = newEvents;
   };
+  
 
   const arpeggiatorNotesRef = useRef(arpeggiatorNotes);
 
@@ -146,6 +151,7 @@ const Synthesizer = () => {
     const scaleNotes = arpeggiatorNotes.scaleNotes;
     let arpeggiatorNotesList = [];
     const repeats = numSteps / scaleNotes.length;
+    
 
     for (let i = 0; i < repeats; i++) {
       arpeggiatorNotesList = arpeggiatorNotesList.concat(scaleNotes);
@@ -153,17 +159,16 @@ const Synthesizer = () => {
 
     arpeggiatorNotesRef.current = arpeggiatorNotesList;
 
-    updateArpeggioEvents(); // Añade esta línea
+    updateArpeggioEvents();
 
     const events = arpeggiatorNotesRef.current.map((_, idx) => {
       const timeBetweenNotes = 60 / bpmRef.current;
       return {
         time: idx * timeBetweenNotes,
-        note: () => arpeggiatorNotesRef.current[idx], // Utiliza arpeggiatorNotesRef.current
+        note: () => arpeggiatorNotesRef.current[idx],
       };
     });
 
-    // Aquí actualizamos el tiempo del loop
     const loopDuration = events.length * (60 / bpmRef.current);
 
     const arpeggioPart = new Tone.Part((time, event) => {
@@ -172,7 +177,7 @@ const Synthesizer = () => {
     }, events);
 
     arpeggioPart.loop = true;
-    arpeggioPart.loopEnd = loopDuration; // Usamos el loopDuration actualizado
+    arpeggioPart.loopEnd = loopDuration;
     arpeggioPart.start(0);
 
     Tone.Transport.start();
@@ -180,17 +185,29 @@ const Synthesizer = () => {
     setPart(arpeggioPart);
   };
 
+  
+const handleNumStepsChange = (event) => {
+  const newNumSteps = parseInt(event.target.value, 10);
+  const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale, newNumSteps);
+  const newScaleNotes = arpeggiatorNotes.scaleNotes.slice(0, newNumSteps);
+  
+  while (newScaleNotes.length < newNumSteps) {
+    newScaleNotes.push(scaleNotes[newScaleNotes.length]);
+  }
+
+  setNumSteps(newNumSteps);
+  setArpeggiatorNotes({ scaleNotes: newScaleNotes, nextOctave });
+};
+
 
 
   const handleNoteChange = (index, event) => {
     const newNotes = [...arpeggiatorNotes.scaleNotes];
-    newNotes[index] = event.target.value;
+    const pageIndex = currentPage * 8;
+    newNotes[pageIndex + index] = event.target.value;
     setArpeggiatorNotes({ scaleNotes: newNotes, nextOctave: arpeggiatorNotes.nextOctave });
-
-    // Agregue estas líneas para actualizar el estado de currentPageNotes
-    const pageStart = currentPage * 8;
-    const pageEnd = pageStart + 8;
-    setCurrentPageNotes(newNotes.slice(pageStart, pageEnd));
+  
+    setCurrentPageNotes(newNotes.slice(pageIndex, pageIndex + 8));
   };
 
 
@@ -223,6 +240,18 @@ const Synthesizer = () => {
   const handlePageChange = (event) => {
     setCurrentPage(parseInt(event.target.value, 10));
   };
+
+  useEffect(() => {
+    const pageStart = currentPage * 8;
+    const pageEnd = pageStart + 8;
+    const currentNotes = arpeggiatorNotes.scaleNotes.slice(pageStart, pageEnd);
+    while (currentNotes.length < 8) {
+      currentNotes.push(null);
+    }
+    setCurrentPageNotes(currentNotes);
+  }, [rootNote, scale, numSteps, currentPage, arpeggiatorNotes.scaleNotes]);
+  
+  
 
 
   return (
@@ -364,20 +393,16 @@ const Synthesizer = () => {
         ))}
       </select>
 
-      <select
-        id="num-steps"
-        value={numSteps}
-        onChange={(e) => {
-          const newNumSteps = parseInt(e.target.value, 10);
-          setNumSteps(newNumSteps);
-          setArpeggiatorNotes(generateScaleNotes(rootNote, scale, newNumSteps));
-        }}
-      >
-        <option value="8">8</option>
-        <option value="16">16</option>
-        <option value="32">32</option>
-        <option value="64">64</option>
-      </select>
+      <div className="synthesizer__control">
+  <label className="synthesizer__control-label" htmlFor="numSteps">Number of Steps</label>
+  <select id="numSteps" value={numSteps} onChange={handleNumStepsChange}>
+    <option value="8">8</option>
+    <option value="16">16</option>
+    <option value="32">32</option>
+    <option value="64">64</option>
+  </select>
+</div>
+
 
       <label htmlFor="current-page">Page</label>
       <select id="current-page" value={currentPage} onChange={handlePageChange}>
