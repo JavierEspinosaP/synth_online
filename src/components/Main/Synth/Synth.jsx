@@ -10,7 +10,6 @@ const generateScaleNotes = (rootNote, scaleType, numSteps) => {
   const rootNoteIndex = scalesData.notes.indexOf(rootNote);
   let scaleNotes = [];
   let octaveOffset = 0;
-  console.log(numSteps);
 
   while (scaleNotes.length < numSteps) {
     for (const interval of scalePattern) {
@@ -28,11 +27,15 @@ const generateScaleNotes = (rootNote, scaleType, numSteps) => {
   return { scaleNotes, nextOctave: octaveOffset };
 };
 
+
+
+
 const Synthesizer = () => {
 
   const [oscillatorType, setOscillatorType] = useState('sine');
+  const [oscillatorType2, setOscillatorType2] = useState('sine');
   const [envelope, setEnvelope] = useState({ attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 });
-  const [gainValue, setGainValue] = useState(0.5);
+  const [gainValue, setGainValue] = useState(0.15);
   const [delayTime, setDelayTime] = useState(0);
   const [delayFeedback, setDelayFeedback] = useState(0);
   const [reverbLevel, setReverbLevel] = useState(0);
@@ -51,7 +54,12 @@ const Synthesizer = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [stepRange, setStepRange] = useState({ start: 0, end: 7 });
   const [currentPageNotes, setCurrentPageNotes] = useState([]);
-
+  const synth2 = useRef(null);
+  const [oscillatorMix, setOscillatorMix] = useState(0.5);
+  const gainOsc1 = useRef(null);
+  const gainOsc2 = useRef(null);
+  const [activeStep, setActiveStep] = useState(null);
+  const [noteIndex, setNoteIndex] = useState(null)
 
   const synth = useRef(null);
   const gain = useRef(null);
@@ -60,6 +68,11 @@ const Synthesizer = () => {
 
   const createSynth = async () => {
     synth.current = new Tone.Synth({
+      oscillator: { type: oscillatorType },
+      envelope: { attack: envelope.attack, decay: envelope.decay, sustain: envelope.sustain, release: envelope.release },
+    });
+
+    synth2.current = new Tone.Synth({
       oscillator: { type: oscillatorType },
       envelope: { attack: envelope.attack, decay: envelope.decay, sustain: envelope.sustain, release: envelope.release },
     });
@@ -74,7 +87,10 @@ const Synthesizer = () => {
     }
     synth.current.connect(delay.current);
     synth.current.connect(reverb.current);
+    synth2.current.connect(delay.current);
+    synth2.current.connect(reverb.current);
   };
+
 
   useEffect(() => {
     createSynth();
@@ -110,23 +126,23 @@ const Synthesizer = () => {
       .slice(0, newNumSteps)
       .map((note, idx) => {
         const timeBetweenNotes = 60 / bpmRef.current;
-  
+
         return {
           time: idx * timeBetweenNotes,
           note: note,
         };
       });
-  
+
     // Asignar el nuevo array de eventos a la referencia events
     events.current = newEvents;
-  
+
     // Actualizar el loopDuration de la parte si es necesario
     if (part) {
       const loopDuration = newEvents.length * (60 / bpmRef.current);
       part.loopEnd = loopDuration;
     }
   };
-  
+
 
 
   const arpeggiatorNotesRef = useRef(arpeggiatorNotes);
@@ -141,6 +157,18 @@ const Synthesizer = () => {
   useEffect(() => {
     arpeggiatorNotesRef.current = arpeggiatorNotes.scaleNotes;
   }, [arpeggiatorNotes]);
+
+  const randomizeNotes = () => {
+    const { scaleNotes } = arpeggiatorNotes;
+    const randomizedNotes = [];
+  
+    for (let i = 0; i < numSteps; i++) {
+      const randomIndex = Math.floor(Math.random() * scaleNotes.length);
+      randomizedNotes.push(scaleNotes[randomIndex]);
+    }
+  
+    setArpeggiatorNotes({ scaleNotes: randomizedNotes, nextOctave: arpeggiatorNotes.nextOctave });
+  };
 
   const playArpeggiator = async () => {
     stopArpeggiator(); // Detener cualquier bucle existente antes de crear uno nuevo
@@ -171,8 +199,10 @@ const Synthesizer = () => {
     const loopDuration = events.length * (60 / bpmRef.current);
 
     const arpeggioPart = new Tone.Part((time, event) => {
-      console.log("Step actual:", events.findIndex(e => e.time === event.time));
+      setNoteIndex(events.findIndex(e => e.time === event.time))
+      // console.log("Step actual:", events.findIndex(e => e.time === event.time));
       synth.current.triggerAttackRelease(event.note(), Tone.Time("1n"), time);
+      synth2.current.triggerAttackRelease(event.note(), Tone.Time("1n"), time);
     }, events);
 
     arpeggioPart.loop = true;
@@ -218,19 +248,26 @@ const Synthesizer = () => {
   };
 
   useEffect(() => {
-    if (synth.current && gain.current && delay.current && reverb.current) {
-      synth.current.set({
+    if (synth.current && synth2.current && gain.current && delay.current && reverb.current) {
+      const synthConfig1 = {
         oscillator: { type: oscillatorType },
         envelope: { attack: envelope.attack, decay: envelope.decay, sustain: envelope.sustain, release: envelope.release },
+      };
 
-      });
+      const synthConfig2 = {
+        oscillator: { type: oscillatorType2 },
+        envelope: { attack: envelope.attack, decay: envelope.decay, sustain: envelope.sustain, release: envelope.release },
+      };
+
+      synth.current.set(synthConfig1);
+      synth2.current.set(synthConfig2);
 
       gain.current.gain.value = gainValue;
       delay.current.delayTime.set({ value: delayTime });
       delay.current.feedback.set({ value: delayFeedback });
-
     }
-  }, [oscillatorType, envelope, gainValue, delayTime, delayFeedback, reverbLevel, reverbDecay]);
+  }, [oscillatorType, oscillatorType2, envelope, gainValue, delayTime, delayFeedback, reverbLevel, reverbDecay]);
+
 
   useEffect(() => {
     if (reverb.current) {
@@ -261,15 +298,15 @@ const Synthesizer = () => {
   useEffect(() => {
     if (isPlaying) {
       updateArpeggioEvents(numSteps);
-  
+
       const loopDuration = events.current.length * (60 / bpmRef.current);
       if (part) {
         part.loopEnd = loopDuration;
       }
     }
   }, [numSteps]);
-  
-  
+
+
   return (
     <div className="synthesizer">
       <h2 className="synthesizer__title">Synthesizer</h2>
@@ -284,6 +321,16 @@ const Synthesizer = () => {
             <option value="sawtooth">Sawtooth</option>
           </select>
         </div>
+        <div className="synthesizer__control">
+          <label className="synthesizer__control-label" htmlFor="oscillatorType2">Oscillator 2</label>
+          <select id="oscillatorType2" onChange={(e) => setOscillatorType2(e.target.value)}>
+            <option value="sine">Sine</option>
+            <option value="square">Square</option>
+            <option value="triangle">Triangle</option>
+            <option value="sawtooth">Sawtooth</option>
+          </select>
+        </div>
+
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="bpm">BPM</label>
           <input
@@ -348,7 +395,7 @@ const Synthesizer = () => {
 
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="gainValue">Gain</label>
-          <input type="range" id="gainValue" min="0" max="1" step="0.01" value={gainValue} onChange={(e) => setGainValue(parseFloat(e.target.value))} />
+          <input type="range" id="gainValue" min="0" max="0.3" step="0.01" value={gainValue} onChange={(e) => setGainValue(parseFloat(e.target.value))} />
         </div>
 
         <div className="synthesizer__control">
@@ -442,6 +489,7 @@ const Synthesizer = () => {
                   </option>
                 ))}
               </select>
+              <div className={noteIndex === index? "active": "circle"}></div>  
             </div>
           ))}
 
@@ -451,7 +499,11 @@ const Synthesizer = () => {
       <div className="synthesizer__play-control">
         <button className="synthesizer__play-button" onClick={handleButtonClick}>{isPlaying ? 'Stop Arpeggiator' : 'Play Arpeggiator'}</button>
       </div>
+      <button className="synthesizer__play-button" onClick={randomizeNotes}>
+        Randomize
+      </button>
     </div>
+
   );
 }
 
