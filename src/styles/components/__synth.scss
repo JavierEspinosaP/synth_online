@@ -1,14 +1,19 @@
 // Synthesizer.scss
 
+@import '../utils/variables.scss';
+
 .synthesizer {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #333;
+  background-image: $background_wood;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
   border-radius: 5px;
-  width: 1400px;
-  height: 400px;
+  width: 1850px;
+  height: 600px;
   padding: 20px;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
 }
@@ -71,4 +76,37 @@
   &:hover {
     background-color: #3e8e41;
   }
+}
+
+.synthesizer__arpeggiator {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.synthesizer__arpeggiator-notes {
+  display: flex;
+  gap: 10px
+}
+
+.synthesizer__note-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center
+}
+
+.circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: black;
+  margin-top: 10px;
+
+}
+
+.active {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: red;
+  margin-top: 10px;
 }
