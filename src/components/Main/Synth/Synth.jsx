@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import * as Tone from 'tone';
 import '../../../styles/components/__synth.scss'
 import scalesData from '../../../assets/scales.json';
+import Knob from './RotaryKnob/RotaryKnob'
+import knobImg from '../../../assets/knob.png';
 
 
 const generateScaleNotes = (rootNote, scaleType, numSteps) => {
@@ -26,9 +28,6 @@ const generateScaleNotes = (rootNote, scaleType, numSteps) => {
   }
   return { scaleNotes, nextOctave: octaveOffset };
 };
-
-
-
 
 const Synthesizer = () => {
 
@@ -55,10 +54,6 @@ const Synthesizer = () => {
   const [stepRange, setStepRange] = useState({ start: 0, end: 7 });
   const [currentPageNotes, setCurrentPageNotes] = useState([]);
   const synth2 = useRef(null);
-  const [oscillatorMix, setOscillatorMix] = useState(0.5);
-  const gainOsc1 = useRef(null);
-  const gainOsc2 = useRef(null);
-  const [activeStep, setActiveStep] = useState(null);
   const [noteIndex, setNoteIndex] = useState(null)
 
   const synth = useRef(null);
@@ -143,6 +138,10 @@ const Synthesizer = () => {
     }
   };
 
+  const playNote = (note) => {
+    synth.current.triggerAttackRelease(note, "8n");
+    synth2.current.triggerAttackRelease(note, "8n");
+  };
 
 
   const arpeggiatorNotesRef = useRef(arpeggiatorNotes);
@@ -161,12 +160,12 @@ const Synthesizer = () => {
   const randomizeNotes = () => {
     const { scaleNotes } = arpeggiatorNotes;
     const randomizedNotes = [];
-  
+
     for (let i = 0; i < numSteps; i++) {
       const randomIndex = Math.floor(Math.random() * scaleNotes.length);
       randomizedNotes.push(scaleNotes[randomIndex]);
     }
-  
+
     setArpeggiatorNotes({ scaleNotes: randomizedNotes, nextOctave: arpeggiatorNotes.nextOctave });
   };
 
@@ -199,7 +198,7 @@ const Synthesizer = () => {
     const loopDuration = events.length * (60 / bpmRef.current);
 
     const arpeggioPart = new Tone.Part((time, event) => {
-      setNoteIndex(events.findIndex(e => e.time === event.time))
+      setNoteIndex(events.findIndex(e => e.time === event.time) + 1)
       // console.log("Step actual:", events.findIndex(e => e.time === event.time));
       synth.current.triggerAttackRelease(event.note(), Tone.Time("1n"), time);
       synth2.current.triggerAttackRelease(event.note(), Tone.Time("1n"), time);
@@ -239,12 +238,18 @@ const Synthesizer = () => {
 
 
   const handleNoteChange = (index, event) => {
+
     const newNotes = [...arpeggiatorNotes.scaleNotes];
     const pageIndex = currentPage * 8;
     newNotes[pageIndex + index] = event.target.value;
     setArpeggiatorNotes({ scaleNotes: newNotes, nextOctave: arpeggiatorNotes.nextOctave });
-
     setCurrentPageNotes(newNotes.slice(pageIndex, pageIndex + 8));
+    playNote(event.target.value);
+  };
+
+  const handleKnobChange = (rotation) => {
+    const gain = (rotation - 45) / (315 - 45) * 0.5;
+    setGainValue(gain);
   };
 
   useEffect(() => {
@@ -281,10 +286,12 @@ const Synthesizer = () => {
   }, [reverbLevel, reverbDecay]);
 
   const handlePageChange = (event) => {
+
     setCurrentPage(parseInt(event.target.value, 10));
   };
 
   useEffect(() => {
+    console.log(currentPage);
     const pageStart = currentPage * 8;
     const pageEnd = pageStart + 8;
     const currentNotes = arpeggiatorNotes.scaleNotes.slice(pageStart, pageEnd);
@@ -395,7 +402,13 @@ const Synthesizer = () => {
 
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="gainValue">Gain</label>
-          <input type="range" id="gainValue" min="0" max="0.3" step="0.01" value={gainValue} onChange={(e) => setGainValue(parseFloat(e.target.value))} />
+          <Knob
+            id="gain"
+            min="0"
+            max="1"
+            step="0.01"
+            value={gainValue}
+            onChange={handleKnobChange} />
         </div>
 
         <div className="synthesizer__control">
@@ -424,38 +437,38 @@ const Synthesizer = () => {
           />
         </div>
       </div>
-
-      <select
-        id="root-note"
-        value={rootNote}
-        onChange={(e) => {
-          setRootNote(e.target.value);
-          setArpeggiatorNotes(generateScaleNotes(e.target.value, scale));
-        }}
-      >
-        {scalesData.notes.slice(0, 12).map((note, index) => (
-          <option key={index} value={note}>
-            {note}
-          </option>
-        ))}
-      </select>
-
-      <select
-        id="scale"
-        value={scale}
-        onChange={(e) => {
-          setScale(e.target.value);
-          setArpeggiatorNotes(generateScaleNotes(rootNote, e.target.value));
-        }}
-      >
-        {Object.keys(scalesData.scales).map((scaleName, index) => (
-          <option key={index} value={scaleName}>
-            {scaleName.charAt(0).toUpperCase() + scaleName.slice(1)}
-          </option>
-        ))}
-      </select>
-
       <div className="synthesizer__control">
+        <select
+          id="root-note"
+          value={rootNote}
+          onChange={(e) => {
+            setRootNote(e.target.value);
+            setArpeggiatorNotes(generateScaleNotes(e.target.value, scale));
+          }}
+        >
+          {scalesData.notes.slice(0, 12).map((note, index) => (
+            <option key={index} value={note}>
+              {note}
+            </option>
+          ))}
+        </select>
+
+        <select
+          id="scale"
+          value={scale}
+          onChange={(e) => {
+            setScale(e.target.value);
+            setArpeggiatorNotes(generateScaleNotes(rootNote, e.target.value));
+          }}
+        >
+          {Object.keys(scalesData.scales).map((scaleName, index) => (
+            <option key={index} value={scaleName}>
+              {scaleName.charAt(0).toUpperCase() + scaleName.slice(1)}
+            </option>
+          ))}
+        </select>
+
+
         <label className="synthesizer__control-label" htmlFor="numSteps">Number of Steps</label>
         <select id="numSteps" value={numSteps} onChange={handleNumStepsChange}>
           <option value="8">8</option>
@@ -463,36 +476,36 @@ const Synthesizer = () => {
           <option value="32">32</option>
           <option value="64">64</option>
         </select>
-      </div>
 
-      <label htmlFor="current-page">Page</label>
-      <select id="current-page" value={currentPage} onChange={handlePageChange}>
-        {Array.from({ length: Math.ceil(numSteps / 8) }, (_, index) => (
-          <option key={index} value={index}>
-            {(index + 1)}
-          </option>
-        ))}
-      </select>
 
-      <div className="synthesizer__arpeggiator">
-        <h3 className="synthesizer__arpeggiator-title">Arpeggiator</h3>
-        <div className="synthesizer__arpeggiator-notes">
-          {currentPageNotes.map((note, index) => (
-            <div key={index} className="synthesizer__note-selector">
-              <select
-                value={note}
-                onChange={(e) => handleNoteChange(index + stepRange.start, e)}
-              >
-                {scalesData.notes.map((noteOption, idx) => (
-                  <option key={idx} value={noteOption}>
-                    {noteOption}
-                  </option>
-                ))}
-              </select>
-              <div className={noteIndex === index? "active": "circle"}></div>  
-            </div>
+        <label htmlFor="current-page">Page</label>
+        <select id="current-page" value={currentPage} onChange={handlePageChange}>
+          {Array.from({ length: Math.ceil(numSteps / 8) }, (_, index) => (
+            <option key={index} value={index}>
+              {(index + 1)}
+            </option>
           ))}
+        </select>
 
+        <div className="synthesizer__arpeggiator">
+          <h3 className="synthesizer__arpeggiator-title">Sequencer</h3>
+          <div className="synthesizer__arpeggiator-notes">
+            {currentPageNotes.map((note, index) => (
+              <div key={index} className="synthesizer__note-selector">
+                <select
+                  value={note}
+                  onChange={(e) => handleNoteChange(index, e)}
+                >
+                  {scalesData.notes.map((noteOption, idx) => (
+                    <option key={idx} value={noteOption}>
+                      {noteOption}
+                    </option>
+                  ))}
+                </select>
+                <div className={noteIndex === (currentPage * 8 + index + 1) ? "active" : "circle"}></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -1,11 +1,16 @@
 // Synthesizer.scss
 
+@import '../utils/variables.scss';
+
 .synthesizer {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #333;
+  background-image: $background_wood;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
   border-radius: 5px;
   width: 1850px;
   height: 600px;

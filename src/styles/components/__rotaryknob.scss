@@ -1,0 +1,15 @@
+// .knob-container {
+//   display: flex;
+//   justify-content: center;
+//   align-items: center;
+//   width: 100px;
+//   height: 100px;
+//   cursor: pointer;
+// }
+
+.knob {
+  user-select: none;
+  pointer-events: none;
+  cursor: default;
+  width: 50px;
+}
