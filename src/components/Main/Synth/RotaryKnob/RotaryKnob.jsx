@@ -1,11 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import knobImg from '../../../../assets/knob.png';
 
-const Knob = ({ onChange }) => {
-    const [rotation, setRotation] = useState(90);
+const Knob = ({ onChange, initialValue = 40 }) => {
+
+  const valueToRotation = (value) => {
+    return (value * (315 - 45)) + 45;
+  };
+   
+    
+  const [rotation, setRotation] = useState(valueToRotation(initialValue));
     const dragging = useRef(false);
     const prevY = useRef(0);
     const knobRef = useRef(null);
+
+
   
     const handlePointerDown = (e) => {
       e.preventDefault();
@@ -21,13 +29,17 @@ const Knob = ({ onChange }) => {
         setRotation((currentRotation) => {
           const newRotation = currentRotation + deltaY;
           if (newRotation >= 45 && newRotation <= 315) {
-            onChange && onChange(newRotation);
+            // Envuelve la llamada a onChange dentro de requestAnimationFrame
+            requestAnimationFrame(() => {
+              onChange && onChange((newRotation - 45) / (315 - 45));
+            });
             return newRotation;
           }
           return currentRotation;
         });
       }
     };
+    
   
     const handlePointerUp = () => {
       dragging.current = false;

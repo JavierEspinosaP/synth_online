@@ -3,7 +3,6 @@ import * as Tone from 'tone';
 import '../../../styles/components/__synth.scss'
 import scalesData from '../../../assets/scales.json';
 import Knob from './RotaryKnob/RotaryKnob'
-import knobImg from '../../../assets/knob.png';
 
 
 const generateScaleNotes = (rootNote, scaleType, numSteps) => {
@@ -34,7 +33,7 @@ const Synthesizer = () => {
   const [oscillatorType, setOscillatorType] = useState('sine');
   const [oscillatorType2, setOscillatorType2] = useState('sine');
   const [envelope, setEnvelope] = useState({ attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 });
-  const [gainValue, setGainValue] = useState(0.15);
+  const [gainValue, setGainValue] = useState(0.1);
   const [delayTime, setDelayTime] = useState(0);
   const [delayFeedback, setDelayFeedback] = useState(0);
   const [reverbLevel, setReverbLevel] = useState(0);
@@ -60,6 +59,8 @@ const Synthesizer = () => {
   const gain = useRef(null);
   const delay = useRef(null);
   const reverb = useRef(null);
+  const bpmRef = useRef(bpm);
+
 
   const createSynth = async () => {
     synth.current = new Tone.Synth({
@@ -146,7 +147,6 @@ const Synthesizer = () => {
 
   const arpeggiatorNotesRef = useRef(arpeggiatorNotes);
 
-  const bpmRef = useRef(bpm);
 
   useEffect(() => {
     Tone.Transport.bpm.value = bpm;
@@ -247,10 +247,7 @@ const Synthesizer = () => {
     playNote(event.target.value);
   };
 
-  const handleKnobChange = (rotation) => {
-    const gain = (rotation - 45) / (315 - 45) * 0.5;
-    setGainValue(gain);
-  };
+
 
   useEffect(() => {
     if (synth.current && synth2.current && gain.current && delay.current && reverb.current) {
@@ -290,8 +287,33 @@ const Synthesizer = () => {
     setCurrentPage(parseInt(event.target.value, 10));
   };
 
+  const handleBpmKnobChange = (rotationRatio) => {
+    const newBpm = rotationRatio * (300 - 0) + 150;
+    setBpm(newBpm);
+  };
+
+  const handleGainKnobChange = (rotation) => {
+    setGainValue(rotation / 2.1);
+  };
+
+  const handleAttackKnobChange = (value) => {
+    setEnvelope({ ...envelope, attack: value });
+  };
+
+  const handleDecayKnobChange = (value) => {
+    setEnvelope({ ...envelope, decay: value });
+  };
+
+  const handleSustainKnobChange = (value) => {
+    setEnvelope({ ...envelope, sustain: value });
+  };
+
+  const handleReleaseKnobChange = (value) => {
+
+    setEnvelope({ ...envelope, release: value });
+  };
+
   useEffect(() => {
-    console.log(currentPage);
     const pageStart = currentPage * 8;
     const pageEnd = pageStart + 8;
     const currentNotes = arpeggiatorNotes.scaleNotes.slice(pageStart, pageEnd);
@@ -340,75 +362,67 @@ const Synthesizer = () => {
 
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="bpm">BPM</label>
-          <input
-            type="range"
-            id="bpm"
-            min="40"
-            max="999"
-            step="1"
-            value={bpm}
-            onChange={(e) => setBpm(parseInt(e.target.value, 10))}
+          <Knob
+            initialValue={0}
+            onChange={handleBpmKnobChange}
           />
         </div>
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="attack">Attack (ms)</label>
-          <input
-            type="range"
-            id="attack"
-            min="0"
-            max="1"
-            step="0.001"
-            value={(Math.log(envelope.attack) - Math.log(0.001)) / (Math.log(10) - Math.log(0.001))}
-            onChange={(e) => setEnvelope({ ...envelope, attack: parseFloat(Math.exp(e.target.value * (Math.log(10) - Math.log(0.001)) + Math.log(0.001))) })}
+          <Knob
+            initialValue={(Math.log(envelope.attack) - Math.log(0.001)) / (Math.log(10) - Math.log(0.001))}
+            onChange={handleAttackKnobChange}
           />
 
         </div>
         <div className="synthesizer__control">
-          <label className="synthesizer__control-label" htmlFor="decay">Decay (ms)</label>
-          <input
-            type="range"
-            id="decay"
-            min="0"
-            max="2000"
-            step="1"
-            value={envelope.decay * 1000}
-            onChange={(e) => setEnvelope({ ...envelope, decay: parseFloat(e.target.value) / 1000 })}
+          <label className="synthesizer__control-label" htmlFor="decay">
+            Decay (ms)
+          </label>
+          <Knob
+            initialValue={
+              (Math.log(envelope.decay) - Math.log(0.001)) /
+              (Math.log(2) - Math.log(0.001))
+            }
+            min={0}
+            max={2000}
+            step={1}
+            onChange={handleDecayKnobChange}
           />
         </div>
         <div className="synthesizer__control">
-          <label className="synthesizer__control-label" htmlFor="sustain">Sustain</label>
-          <input
-            type="range"
-            id="sustain"
-            min="0"
-            max="1"
-            step="0.01"
-            value={envelope.sustain}
-            onChange={(e) => setEnvelope({ ...envelope, sustain: parseFloat(e.target.value) })}
+          <label className="synthesizer__control-label" htmlFor="sustain">
+            Sustain
+          </label>
+          <Knob
+            initialValue={envelope.sustain}
+            min={0}
+            max={1}
+            step={0.01}
+            onChange={handleSustainKnobChange}
           />
         </div>
-        <div className="synthesizer__control">
-          <label className="synthesizer__control-label" htmlFor="release">Release (ms)</label>
-          <input
-            type="range"
-            id="release"
-            min="0"
-            max="5000"
-            step="1"
-            value={envelope.release * 1000}
-            onChange={(e) => setEnvelope({ ...envelope, release: parseFloat(e.target.value) / 1000 })}
+        {/* <div className="synthesizer__control">
+          <label className="synthesizer__control-label" htmlFor="release">
+            Release (ms)
+          </label>
+          <Knob
+            initialValue={
+              (Math.log(envelope.release) - Math.log(0.001)) /
+              (Math.log(5) - Math.log(0.001))
+            }
+            min={0}
+            max={5000}
+            step={1}
+            onChange={handleReleaseKnobChange}
           />
-        </div>
+        </div> */}
 
         <div className="synthesizer__control">
           <label className="synthesizer__control-label" htmlFor="gainValue">Gain</label>
           <Knob
-            id="gain"
-            min="0"
-            max="1"
-            step="0.01"
-            value={gainValue}
-            onChange={handleKnobChange} />
+            initialValue={0.1}
+            onChange={handleGainKnobChange} />
         </div>
 
         <div className="synthesizer__control">
