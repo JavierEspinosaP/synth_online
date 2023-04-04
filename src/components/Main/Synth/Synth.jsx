@@ -3,6 +3,7 @@ import * as Tone from 'tone';
 import '../../../styles/components/__synth.scss'
 import scalesData from '../../../assets/scales.json';
 import Knob from './RotaryKnob/RotaryKnob'
+import _ from 'lodash';
 
 
 const generateScaleNotes = (rootNote, scaleType, numSteps) => {
@@ -308,10 +309,33 @@ const Synthesizer = () => {
     setEnvelope({ ...envelope, sustain: value });
   };
 
-  const handleReleaseKnobChange = (value) => {
+  const handleDelayTimeKnobChange = _.debounce((value) => {
+    setDelayTime(value);
+  }, 200)
 
-    setEnvelope({ ...envelope, release: value });
-  };
+  const handleDelayFeedbackKnobChange = _.debounce((value) => {
+    setDelayFeedback(value);
+  }, 200)
+
+  const handleReverbLevelKnobChange = _.debounce((value) => {
+    const minValue = 0;
+    const maxValue = 1;
+    const steps = 10;
+    const stepSize = (maxValue - minValue) / steps;
+    const roundedValue = Math.round(value * steps) / steps;
+    const newValue = roundedValue * (maxValue - minValue) + minValue;
+    setReverbLevel(newValue);
+  }, 200)
+
+  const handleReverbDecayKnobChange = _.debounce((value) => {
+    const minValue = 0.01;
+    const maxValue = 10;
+    const steps = 10;
+    const stepSize = (maxValue - minValue) / steps;
+    const roundedValue = Math.round(value * steps) / steps;
+    const newValue = roundedValue * (maxValue - minValue) + minValue;
+    setReverbDecay(newValue);
+  }, 200)
 
   useEffect(() => {
     const pageStart = currentPage * 8;
@@ -426,30 +450,47 @@ const Synthesizer = () => {
         </div>
 
         <div className="synthesizer__control">
-          <label className="synthesizer__control-label" htmlFor="delayTime">Delay Time</label>
-          <input type="range" id="delayTime" min="0" max="1" step="0.2" value={delayTime} onChange={(e) => setDelayTime(parseFloat(e.target.value))} />
-        </div>
-        <div className="synthesizer__control">
-          <label className="synthesizer__control-label" htmlFor="delayFeedback">Delay Feedback</label>
-          <input type="range" id="delayFeedback" min="0" max="1" step="0.2" value={delayFeedback} onChange={(e) => setDelayFeedback(parseFloat(e.target.value))} />
-        </div>
+      <label className="synthesizer__control-label" htmlFor="delayTime">Delay Time</label>
+      <Knob
+        initialValue={0}
+        min={0}
+        max={1}
+        step={0.01}
+        onChange={handleDelayTimeKnobChange}
+      />
+    </div>
+    <div className="synthesizer__control">
+      <label className="synthesizer__control-label" htmlFor="delayFeedback">Delay Feedback</label>
+      <Knob
+        initialValue={delayFeedback}
+        min={0}
+        max={1}
+        step={0.01}
+        onChange={handleDelayFeedbackKnobChange}
+      />
+    </div>
 
-        <div className="synthesizer__control">
-          <label className="synthesizer__control-label" htmlFor="reverbLevel">Reverb Level</label>
-          <input type="range" id="reverbLevel" min="0" max="1" step="0.2" value={reverbLevel} onChange={(e) => setReverbLevel(parseFloat(e.target.value))} />
-        </div>
-        <div className="synthesizer__control">
-          <label className="synthesizer__control-label" htmlFor="reverbDecay">Reverb Decay</label>
-          <input
-            type="range"
-            id="reverbDecay"
-            min="0.01"
-            max="10"
-            step="2"
-            value={reverbDecay}
-            onChange={(e) => setReverbDecay(parseFloat(e.target.value))}
-          />
-        </div>
+    <div className="synthesizer__control">
+      <label className="synthesizer__control-label" htmlFor="reverbLevel">Reverb Level</label>
+      <Knob
+        initialValue={(reverbLevel - 0) / (1 - 0)}
+        min={0}
+        max={1}
+        step={0.1}
+        onChange={handleReverbLevelKnobChange}
+      />
+    </div>
+
+    <div className="synthesizer__control">
+      <label className="synthesizer__control-label" htmlFor="reverbDecay">Reverb Decay</label>
+      <Knob
+        initialValue={(reverbDecay - 0.01) / (10 - 0.01)}
+        min={0}
+        max={1}
+        step={0.1}
+        onChange={handleReverbDecayKnobChange}
+      />
+    </div>
       </div>
       <div className="synthesizer__control">
         <select
