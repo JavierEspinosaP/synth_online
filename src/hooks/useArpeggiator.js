@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import scalesData from '../assets/scales.json';
 
 const useArpeggiator = (initialRootNote, initialScaleType, initialNumSteps) => {
+
+
     const generateScaleNotes = (rootNote, scaleType, numSteps) => {
 
         const scalePattern = scalesData.scales[scaleType];
@@ -24,20 +26,33 @@ const useArpeggiator = (initialRootNote, initialScaleType, initialNumSteps) => {
         }
         return { scaleNotes, nextOctave: octaveOffset };
     };
-
-    const [rootNote, setRootNote] = useState(initialRootNote);
-    const [scale, setScale] = useState(initialScaleType);
-    const [numSteps, setNumSteps] = useState(initialNumSteps);
-
     const [arpeggiatorNotes, setArpeggiatorNotes] = useState(() => {
         const { scaleNotes, nextOctave } = generateScaleNotes(initialRootNote, initialScaleType, initialNumSteps);
         return { scaleNotes, nextOctave };
     });
 
+    const [rootNote, setRootNote] = useState(initialRootNote);
+    const [scale, setScale] = useState(initialScaleType);
+    const [numSteps, setNumSteps] = useState(initialNumSteps);
+
+
+
     useEffect(() => {
         const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale, numSteps);
         setArpeggiatorNotes({ scaleNotes, nextOctave });
       }, [rootNote, scale, numSteps]);
+
+      const randomizeNotes = () => {
+        const { scaleNotes } = arpeggiatorNotes;
+        const randomizedNotes = [];
+    
+        for (let i = 0; i < numSteps; i++) {
+          const randomIndex = Math.floor(Math.random() * scaleNotes.length);
+          randomizedNotes.push(scaleNotes[randomIndex]);
+        }
+    
+        setArpeggiatorNotes({ scaleNotes: randomizedNotes, nextOctave: arpeggiatorNotes.nextOctave });
+      };
 
       return {
         rootNote,
@@ -48,7 +63,8 @@ const useArpeggiator = (initialRootNote, initialScaleType, initialNumSteps) => {
         setNumSteps,
         arpeggiatorNotes,
         setArpeggiatorNotes,
-        generateScaleNotes
+        generateScaleNotes,
+        randomizeNotes
       };
 };
 

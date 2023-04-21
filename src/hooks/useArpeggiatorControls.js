@@ -1,8 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import _ from 'lodash';
+import * as Tone from 'tone';
 
 const useArpeggiatorControls = (initialBpm, initialGain, initialEnvelope) => {
   const [bpm, setBpm] = useState(initialBpm);
+  const bpmRef = useRef(bpm);  
   const [gainValue, setGainValue] = useState(initialGain);
   const [envelope, setEnvelope] = useState(initialEnvelope);
   const [delayTime, setDelayTime] = useState(0);
@@ -52,8 +54,34 @@ const useArpeggiatorControls = (initialBpm, initialGain, initialEnvelope) => {
     setDelayFeedback(value);
   }, 200)
 
+  useEffect(() => {
+    Tone.Transport.bpm.value = bpm;
+    bpmRef.current = bpm; 
+  }, [bpm]);
+
+  const handleReverbLevelKnobChange = _.debounce((value) => {
+    const minValue = 0;
+    const maxValue = 1;
+    const steps = 10;
+    const stepSize = (maxValue - minValue) / steps;
+    const roundedValue = Math.round(value * steps) / steps;
+    const newValue = roundedValue * (maxValue - minValue) + minValue;
+    setReverbLevel(newValue);
+  }, 200)
+
+  const handleReverbDecayKnobChange = _.debounce((value) => {
+    const minValue = 0.01;
+    const maxValue = 10;
+    const steps = 10;
+    const stepSize = (maxValue - minValue) / steps;
+    const roundedValue = Math.round(value * steps) / steps;
+    const newValue = roundedValue * (maxValue - minValue) + minValue;
+    setReverbDecay(newValue);
+  }, 200)
+
   return {
     bpm,
+    bpmRef,
     gainValue,
     envelope,
     delayTime,
@@ -76,7 +104,9 @@ const useArpeggiatorControls = (initialBpm, initialGain, initialEnvelope) => {
     handleDecayKnobChange,
     handleSustainKnobChange,
     handleDelayTimeKnobChange,
-    handleDelayFeedbackKnobChange
+    handleDelayFeedbackKnobChange,
+    handleReverbLevelKnobChange,
+    handleReverbDecayKnobChange
 
   };
 };

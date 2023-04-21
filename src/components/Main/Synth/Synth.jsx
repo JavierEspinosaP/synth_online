@@ -4,6 +4,7 @@ import '../../../styles/components/__synth.scss'
 import { useCreateSynth } from '../../../hooks/useCreateSynth'; 
 import useArpeggiator from '../../../hooks/useArpeggiator';
 import useArpeggiatorControls from '../../../hooks/useArpeggiatorControls';
+import useArpeggiatorState from '../../../hooks/useArpeggiatorState'
 import scalesData from '../../../assets/scales.json';
 import Knob from './RotaryKnob/RotaryKnob'
 import _ from 'lodash';
@@ -15,18 +16,20 @@ const Synthesizer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [part, setPart] = useState(null);
   const [noteIndex, setNoteIndex] = useState(null)  
-
+  // const [arpeggiatorNotes, setArpeggiatorNotes] = useState({
+  //   scaleNotes: [],
+  //   nextOctave: null,
+  // });
 
   const {
     bpm,
+    bpmRef,
     gainValue,
     envelope,
     delayTime,
     delayFeedback,
     reverbLevel,
     reverbDecay,
-    setReverbLevel,
-    setReverbDecay,
     bpmToRotation,
     gainToRotation,
     attackToRotation,
@@ -36,10 +39,12 @@ const Synthesizer = () => {
     handleDecayKnobChange,
     handleSustainKnobChange,
     handleDelayTimeKnobChange,
-    handleDelayFeedbackKnobChange
+    handleDelayFeedbackKnobChange,
+    handleReverbLevelKnobChange,
+    handleReverbDecayKnobChange
   } = useArpeggiatorControls(200, 0.1,{ attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 } )
 
-  const bpmRef = useRef(bpm);
+
   const {
     rootNote,
     setRootNote,
@@ -49,8 +54,11 @@ const Synthesizer = () => {
     setNumSteps,
     arpeggiatorNotes,
     setArpeggiatorNotes,
-    generateScaleNotes
+    generateScaleNotes,
+    randomizeNotes
   } = useArpeggiator('C5', 'major', 8);
+
+  
 
   const stopArpeggiator = () => {
     if (part) {
@@ -120,11 +128,6 @@ const Synthesizer = () => {
     reverbDecay
   });
 
-  useEffect(() => {
-    const { scaleNotes, nextOctave } = generateScaleNotes(rootNote, scale, numSteps);
-    setArpeggiatorNotes({ scaleNotes, nextOctave });
-  }, [rootNote, scale, numSteps]);
-
 
   const handleButtonClick = () => {
     if (isPlaying) {
@@ -134,57 +137,39 @@ const Synthesizer = () => {
     }
   };
 
-  const updateArpeggioEvents = (newNumSteps = numSteps) => {
-    const newEvents = arpeggiatorNotesRef.current
-      .slice(0, newNumSteps)
-      .map((note, idx) => {
-        const timeBetweenNotes = 60 / bpmRef.current;
+  // const updateArpeggioEvents = (newNumSteps = numSteps) => {
+  //   const newEvents = arpeggiatorNotesRef.current
+  //     .slice(0, newNumSteps)
+  //     .map((note, idx) => {
+  //       const timeBetweenNotes = 60 / bpmRef.current;
 
-        return {
-          time: idx * timeBetweenNotes,
-          note: note,
-        };
-      });
-    events.current = newEvents;
+  //       return {
+  //         time: idx * timeBetweenNotes,
+  //         note: note,
+  //       };
+  //     });
+  //   events.current = newEvents;
 
-    if (part) {
-      const loopDuration = newEvents.length * (60 / bpmRef.current);
-      part.loopEnd = loopDuration;
-    }
-  };
+  //   if (part) {
+  //     const loopDuration = newEvents.length * (60 / bpmRef.current);
+  //     part.loopEnd = loopDuration;
+  //   }
+  // };
 
-  const playNote = (note) => {
-    synth.current.triggerAttackRelease(note, "8n");
-    synth2.current.triggerAttackRelease(note, "8n");
-  };
-
-
-  const arpeggiatorNotesRef = useRef(arpeggiatorNotes);
+  // const playNote = (note) => {
+  //   synth.current.triggerAttackRelease(note, "8n");
+  //   synth2.current.triggerAttackRelease(note, "8n");
+  // };
 
 
-  useEffect(() => {
-    Tone.Transport.bpm.value = bpm;
-    bpmRef.current = bpm; 
-  }, [bpm]);
+
+
+  // const arpeggiatorNotesRef = useRef(arpeggiatorNotes);
+
 
   useEffect(() => {
     arpeggiatorNotesRef.current = arpeggiatorNotes.scaleNotes;
   }, [arpeggiatorNotes]);
-
-  const randomizeNotes = () => {
-    const { scaleNotes } = arpeggiatorNotes;
-    const randomizedNotes = [];
-
-    for (let i = 0; i < numSteps; i++) {
-      const randomIndex = Math.floor(Math.random() * scaleNotes.length);
-      randomizedNotes.push(scaleNotes[randomIndex]);
-    }
-
-    setArpeggiatorNotes({ scaleNotes: randomizedNotes, nextOctave: arpeggiatorNotes.nextOctave });
-  };
-
-
-
 
   useEffect(() => {
     if (isPlaying) {
@@ -193,54 +178,30 @@ const Synthesizer = () => {
     }
   }, [numSteps]);
 
-  const handleNumStepsChange = (event) => {
-    const newNumSteps = parseInt(event.target.value, 10);
-    setNumSteps(newNumSteps);
-    console.log(numSteps);
-    const { scaleNotes, nextOctave } = generateScaleNotes(
-      rootNote,
-      scale,
-      newNumSteps
-    );
-    setArpeggiatorNotes({ scaleNotes, nextOctave });
-    console.log(scaleNotes);
-    arpeggiatorNotesRef.current = scaleNotes;
-  };
+  // const handleNumStepsChange = (event) => {
+  //   const newNumSteps = parseInt(event.target.value, 10);
+  //   setNumSteps(newNumSteps);
+  //   console.log(numSteps);
+  //   const { scaleNotes, nextOctave } = generateScaleNotes(
+  //     rootNote,
+  //     scale,
+  //     newNumSteps
+  //   );
+  //   setArpeggiatorNotes({ scaleNotes, nextOctave });
+  //   console.log(scaleNotes);
+  //   arpeggiatorNotesRef.current = scaleNotes;
+  // };
 
 
+  // const handleNoteChange = (index, event) => {
 
-  const handleNoteChange = (index, event) => {
-
-    const newNotes = [...arpeggiatorNotes.scaleNotes];
-    const pageIndex = currentPage * 8;
-    newNotes[pageIndex + index] = event.target.value;
-    setArpeggiatorNotes({ scaleNotes: newNotes, nextOctave: arpeggiatorNotes.nextOctave });
-    setCurrentPageNotes(newNotes.slice(pageIndex, pageIndex + 8));
-    playNote(event.target.value);
-  };
-
-
-
-  useEffect(() => {
-    if (synth.current && synth2.current && gain.current && delay.current && reverb.current) {
-      const synthConfig1 = {
-        oscillator: { type: oscillatorType },
-        envelope: { attack: envelope.attack, decay: envelope.decay, sustain: envelope.sustain, release: envelope.release },
-      };
-
-      const synthConfig2 = {
-        oscillator: { type: oscillatorType2 },
-        envelope: { attack: envelope.attack, decay: envelope.decay, sustain: envelope.sustain, release: envelope.release },
-      };
-
-      synth.current.set(synthConfig1);
-      synth2.current.set(synthConfig2);
-
-      gain.current.gain.value = gainValue;
-      delay.current.delayTime.set({ value: delayTime });
-      delay.current.feedback.set({ value: delayFeedback });
-    }
-  }, [oscillatorType, oscillatorType2, envelope, gainValue, delayTime, delayFeedback, reverbLevel, reverbDecay]);
+  //   const newNotes = [...arpeggiatorNotes.scaleNotes];
+  //   const pageIndex = currentPage * 8;
+  //   newNotes[pageIndex + index] = event.target.value;
+  //   setArpeggiatorNotes({ scaleNotes: newNotes, nextOctave: arpeggiatorNotes.nextOctave });
+  //   setCurrentPageNotes(newNotes.slice(pageIndex, pageIndex + 8));
+  //   playNote(event.target.value);
+  // };
 
 
   useEffect(() => {
@@ -254,30 +215,24 @@ const Synthesizer = () => {
     }
   }, [reverbLevel, reverbDecay]);
 
-  const handlePageChange = (event) => {
+  // const handlePageChange = (event) => {
 
-    setCurrentPage(parseInt(event.target.value, 10));
-  };
+  //   setCurrentPage(parseInt(event.target.value, 10));
+  // };
 
-  const handleReverbLevelKnobChange = _.debounce((value) => {
-    const minValue = 0;
-    const maxValue = 1;
-    const steps = 10;
-    const stepSize = (maxValue - minValue) / steps;
-    const roundedValue = Math.round(value * steps) / steps;
-    const newValue = roundedValue * (maxValue - minValue) + minValue;
-    setReverbLevel(newValue);
-  }, 200)
 
-  const handleReverbDecayKnobChange = _.debounce((value) => {
-    const minValue = 0.01;
-    const maxValue = 10;
-    const steps = 10;
-    const stepSize = (maxValue - minValue) / steps;
-    const roundedValue = Math.round(value * steps) / steps;
-    const newValue = roundedValue * (maxValue - minValue) + minValue;
-    setReverbDecay(newValue);
-  }, 200)
+  const {
+    // arpeggiatorNotes,
+    // setArpeggiatorNotes,
+    arpeggiatorNotesRef,
+    handleNumStepsChange,
+    handleNoteChange,
+    handlePageChange,
+    updateArpeggioEvents,
+    playNote,
+  } = useArpeggiatorState(rootNote, scale, numSteps, setNumSteps, arpeggiatorNotes, setArpeggiatorNotes, generateScaleNotes, currentPage, setCurrentPageNotes, setCurrentPage, bpmRef, 
+    events, part, synth, synth2);
+
 
   useEffect(() => {
     const pageStart = currentPage * 8;
