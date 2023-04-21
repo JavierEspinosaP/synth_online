@@ -16,10 +16,6 @@ const Synthesizer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [part, setPart] = useState(null);
   const [noteIndex, setNoteIndex] = useState(null)  
-  // const [arpeggiatorNotes, setArpeggiatorNotes] = useState({
-  //   scaleNotes: [],
-  //   nextOctave: null,
-  // });
 
   const {
     bpm,
@@ -137,35 +133,6 @@ const Synthesizer = () => {
     }
   };
 
-  // const updateArpeggioEvents = (newNumSteps = numSteps) => {
-  //   const newEvents = arpeggiatorNotesRef.current
-  //     .slice(0, newNumSteps)
-  //     .map((note, idx) => {
-  //       const timeBetweenNotes = 60 / bpmRef.current;
-
-  //       return {
-  //         time: idx * timeBetweenNotes,
-  //         note: note,
-  //       };
-  //     });
-  //   events.current = newEvents;
-
-  //   if (part) {
-  //     const loopDuration = newEvents.length * (60 / bpmRef.current);
-  //     part.loopEnd = loopDuration;
-  //   }
-  // };
-
-  // const playNote = (note) => {
-  //   synth.current.triggerAttackRelease(note, "8n");
-  //   synth2.current.triggerAttackRelease(note, "8n");
-  // };
-
-
-
-
-  // const arpeggiatorNotesRef = useRef(arpeggiatorNotes);
-
 
   useEffect(() => {
     arpeggiatorNotesRef.current = arpeggiatorNotes.scaleNotes;
@@ -177,31 +144,6 @@ const Synthesizer = () => {
       playArpeggiator(); 
     }
   }, [numSteps]);
-
-  // const handleNumStepsChange = (event) => {
-  //   const newNumSteps = parseInt(event.target.value, 10);
-  //   setNumSteps(newNumSteps);
-  //   console.log(numSteps);
-  //   const { scaleNotes, nextOctave } = generateScaleNotes(
-  //     rootNote,
-  //     scale,
-  //     newNumSteps
-  //   );
-  //   setArpeggiatorNotes({ scaleNotes, nextOctave });
-  //   console.log(scaleNotes);
-  //   arpeggiatorNotesRef.current = scaleNotes;
-  // };
-
-
-  // const handleNoteChange = (index, event) => {
-
-  //   const newNotes = [...arpeggiatorNotes.scaleNotes];
-  //   const pageIndex = currentPage * 8;
-  //   newNotes[pageIndex + index] = event.target.value;
-  //   setArpeggiatorNotes({ scaleNotes: newNotes, nextOctave: arpeggiatorNotes.nextOctave });
-  //   setCurrentPageNotes(newNotes.slice(pageIndex, pageIndex + 8));
-  //   playNote(event.target.value);
-  // };
 
 
   useEffect(() => {
@@ -215,15 +157,8 @@ const Synthesizer = () => {
     }
   }, [reverbLevel, reverbDecay]);
 
-  // const handlePageChange = (event) => {
-
-  //   setCurrentPage(parseInt(event.target.value, 10));
-  // };
-
 
   const {
-    // arpeggiatorNotes,
-    // setArpeggiatorNotes,
     arpeggiatorNotesRef,
     handleNumStepsChange,
     handleNoteChange,

@@ -2,10 +2,6 @@ import { useState, useEffect, useRef } from "react";
 
 export const useArpeggiatorState = (rootNote, scale, numSteps, setNumSteps, arpeggiatorNotes, setArpeggiatorNotes, generateScaleNotes, currentPage, setCurrentPageNotes, setCurrentPage, bpmRef, 
   events, part, synth, synth2) => {
-  // const [arpeggiatorNotes, setArpeggiatorNotes] = useState({
-  //   scaleNotes: [],
-  //   nextOctave: null,
-  // });
   const arpeggiatorNotesRef = useRef(arpeggiatorNotes);
 
   useEffect(() => {
